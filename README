@@ -1,0 +1,118 @@
+log traceback information in a readable way
+===========================================
+
+write_func - a function used to write exceptions, receieves string
+add_newline - if True, adds a newline to every line passed to write_func
+
+Magic Variables:
+----------------
+
+If you define one of these variables in your local scope, you can add information 
+to tracebacks that happen in that context. This allows applications to add all sorts
+of extra information about the context of the error
+
+``__traceback_hide__``:
+    If set and true, this indicates that the frame should be hidden from abbreviated tracebacks.
+    (the frame won't be logged) This allows to hide some of the complexety of the traceback and
+    let the user focus on the relevant path
+
+``__traceback_hide_all_vars__``:
+    If set and true, this indicates that all the vars in this context should be hidden (in order to avoid 
+    leak of information)
+
+``__traceback_hide_vars__``:
+    [variable which supports "in"] if set, variable names in __traceback_hide_vars__ aren't logged.
+
+``__traceback_expand_vars__``:
+    [variable which supports "in"] if set, variable names in __traceback_expand_vars__ are expanded (otherwise, only the first 40 chars are displayed).
+
+``__traceback_stop__``:
+    If set and true, stop traversing traceback in lower levels
+
+``__traceback_stop_display_vars__``:
+    If set and true, stop traversing displaying variables in lower levels
+
+``__traceback_start__``:
+    If set and true, start up the traceback again, if ``__traceback_stop__`` has come into play
+
+``__traceback_start_display_vars__``:
+    If set and true, start up displaying variables again, if ``__traceback_stop_display_vars__`` has come into play
+
+
+Example
+-------
+from log_exception import log_exception
+import sys 
+
+def login(username, password, reason):
+    __traceback_hide_vars__ = ['password']
+    __traceback_expand_vars__ = ['reason']
+                
+    #do_login doesn't exist, and will cause an exception
+    do_login(username, password)
+                    
+            
+def play(username, password):
+    __traceback_hide_vars__ = ['password']
+    reason = "I just want to login, will you help me good sir?"
+    login(username, password, reason)
+        
+def run(username, password): 
+    try:    
+        play(username, password)  
+    except Exception, e:
+        log_exception(write_func = sys.stderr.write , add_newline = True)
+
+
+if __name__ == '__main__':
+    run('admin', 'Sekret')
+
+Output:
+-------
+File: 'example.py', line number: 19
+        login(username, password, reason)
+            
+    def run(username, password): 
+        try:    
+-->         play(username, password)  
+        except Exception, e:
+            log_exception(write_func = sys.stderr.write , add_newline = True)
+    
+NameError: global name 'do_login' is not defined
+Variable             Type       Value                                                     
+--------             ----       -----                                                     
+e                    NameError  global name 'do_login' is not defined                     
+password             str        Sekret                                                    
+username             str        admin                                                     
+
+File: 'example.py', line number: 15
+                
+    def play(username, password):
+        __traceback_hide_vars__ = ['password']
+        reason = "I just want to login, will you help me good sir?"
+-->     login(username, password, reason)
+            
+    def run(username, password): 
+        try:    
+NameError: global name 'do_login' is not defined
+Variable             Type       Value                                                     
+--------             ----       -----                                                     
+password             str        [hidden]                                                  
+reason               str        I just want to login, will you help me g                  
+username             str        admin                                                     
+
+File: 'example.py', line number: 9
+        __traceback_hide_vars__ = ['password']
+        __traceback_expand_vars__ = ['reason']
+                    
+        #do_login doesn't exist, and will cause an exception
+-->     do_login(username, password)
+                        
+                
+    def play(username, password):
+NameError: global name 'do_login' is not defined
+Variable             Type       Value                                                     
+--------             ----       -----                                                     
+password             str        [hidden]                                                  
+reason               str        I just want to login, will you help me good sir?          
+username             str        admin               
